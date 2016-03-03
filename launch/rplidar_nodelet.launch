@@ -6,7 +6,9 @@
   <arg name="angle_compensate"  default="true"/>
   <arg name="topic_name"        default="scan"/>
 
-  <node name="rplidar_node"          pkg="rplidar_ros"  type="rplidar_node" output="screen">
+  <node pkg="nodelet" type="nodelet" name="rplidar_nodelet_manager" args="manager" />
+
+  <node pkg="nodelet" type="nodelet" name="rplidar_nodelet" args="load rplidar_ros/RPlidarNodelet rplidar_nodelet_manager" output="screen">
     <param name="serial_port"         type="string" value="$(arg serial_port)"/>
     <param name="serial_baudrate"     type="int"    value="$(arg serial_baudrate)"/>
     <param name="frame_id"            type="string" value="$(arg frame_id)"/>
@@ -14,4 +16,5 @@
     <param name="angle_compensate"    type="bool"   value="$(arg angle_compensate)"/>
     <remap from="scan" to="$(arg topic_name)"/>
   </node>
+
 </launch>
