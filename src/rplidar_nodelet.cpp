@@ -75,21 +75,65 @@ namespace rplidar_ros {
       } // release mutex lock
       else
       {
-        NODELET_INFO("Re-initialising driver ...");
-        res = init_driver(serial_port, serial_baudrate);
-        if (res < 0)
+        if (!drv)
         {
-          NODELET_ERROR_STREAM("Failed to re-initialise driver. Will keep trying.");
-          ros::Duration(1.0).sleep();
+          NODELET_INFO("No driver initialised. Let's try to re-initialise it again.");
+          res = init_driver(serial_port, serial_baudrate);
+          if (res < 0)
+          {
+            NODELET_ERROR_STREAM("Failed to re-initialise driver. Will keep trying.");
+            ros::Duration(1.0).sleep();
+          }
+          else
+          {
+            initialised = true;
+          }
         }
         else
         {
-          initialised = true;
+          if (!checkRPLIDARHealth(drv))
+          {
+            NODELET_INFO("Bad health. Let's better re-initialise the driver.");
+            res = init_driver(serial_port, serial_baudrate);
+            if (res < 0)
+            {
+              NODELET_ERROR_STREAM("Failed to re-initialise driver. Will keep trying.");
+              ros::Duration(1.0).sleep();
+            }
+            else
+            {
+              initialised = true;
+            }
+          }
+          else
+          {
+            NODELET_INFO("Driver is still healthy. Let's just reset the scanning.");
+            u_result op_result;
+            op_result = drv->stop();
+            if (op_result == RESULT_OK)
+            {
+              NODELET_INFO("Stopped scanning.");
+              op_result = drv->startScan();
+              if (op_result == RESULT_OK)
+              {
+                NODELET_INFO("Restarted scanning.");
+                initialised = true;
+              }
+              else
+              {
+                NODELET_ERROR("Failed to restart scanning. (%i)", op_result);
+              }
+            }
+            else
+            {
+              NODELET_ERROR("Failed to stop scanning. (%i)", op_result);
+            }
+          }
         }
       }
     }
     // done!
-    RPlidarDriver::DisposeDriver(drv);
+    RPlidarDriver::DisposeDriver(&drv);
   }
 
   void RPlidarNodelet::read_scan()
@@ -230,6 +274,18 @@ namespace rplidar_ros {
   {
     NODELET_INFO_STREAM("RPlidar : Initialising driver.");
 
+    // check if there is an existing driver instance
+    if (drv)
+    {
+      if (drv->isConnected())
+      {
+        NODELET_INFO_STREAM("RPlidar : Disconnecting old driver instance.");
+        drv->disconnect();
+      }
+      NODELET_INFO_STREAM("RPlidar : Disposing old driver instance.");
+      RPlidarDriver::DisposeDriver(&drv);
+    }
+
     // create the driver instance
     drv = RPlidarDriver::CreateDriver(RPlidarDriver::DRIVER_TYPE_SERIALPORT);
 
@@ -245,14 +301,14 @@ namespace rplidar_ros {
     if (IS_FAIL(result))
     {
       NODELET_ERROR_STREAM("RPlidar : Cannot bind to the specified serial port [" << serial_port << "]");
-      RPlidarDriver::DisposeDriver(drv);
+      RPlidarDriver::DisposeDriver(&drv);
       return -1;
     }
 
     // check health...
     if (!checkRPLIDARHealth(drv))
     {
-      RPlidarDriver::DisposeDriver(drv);
+      RPlidarDriver::DisposeDriver(&drv);
       return -1;
     }
 
@@ -261,7 +317,7 @@ namespace rplidar_ros {
     if ( start_scan_result != RESULT_OK )
     {
       NODELET_ERROR_STREAM("RPLidar : Failed to put the device into scanning mode [" << start_scan_result << "]");
-      RPlidarDriver::DisposeDriver(drv);
+      RPlidarDriver::DisposeDriver(&drv);
       return -1;
     }
 
