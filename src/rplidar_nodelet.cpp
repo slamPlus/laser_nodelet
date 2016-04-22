@@ -77,11 +77,11 @@ namespace rplidar_ros {
       {
         if (!drv)
         {
-          NODELET_INFO("No driver initialised. Let's try to re-initialise it again.");
+          NODELET_INFO("RPLidar: no driver initialised, trying to re-initialise it again.");
           res = init_driver(serial_port, serial_baudrate);
           if (res < 0)
           {
-            NODELET_ERROR_STREAM("Failed to re-initialise driver. Will keep trying.");
+            NODELET_ERROR_STREAM("RPLidar: failed to re-initialise driver, will keep trying.");
             ros::Duration(1.0).sleep();
           }
           else
@@ -192,7 +192,11 @@ namespace rplidar_ros {
                          frame_id);
            }
       } else if (op_result == RESULT_OPERATION_FAIL) {
-            // All the data is invalid, just publish them
+            // All the data is invalid
+            // SHOULD NOT PUBLISH ANY DATA FROM here
+            // BECAUSE IT CAN CRASH THE PROGRAMS USING THE DATA
+
+            /*
             float angle_min = DEG2RAD(0.0f);
             float angle_max = DEG2RAD(359.0f);
 
@@ -202,6 +206,7 @@ namespace rplidar_ros {
                          start_scan_time, scan_duration, inverted,
                          angle_min, angle_max,
                          frame_id);
+            */
         }
 
     }
@@ -271,32 +276,24 @@ namespace rplidar_ros {
       // Check if the data size is not equal to 360. if not don't publish it
       // This is strict check which could to lose to see only if node_count is 0
       // But 99% of the time RPlidar produces 360 sized data
-      if (node_count != 360) {
-        NODELET_WARN_STREAM("RPLidar : Node count is not equal to 360");
-        NODELET_WARN_STREAM("Node Count: " << node_count);
+      if (node_count == 360) {  // Only publish when data size is 360
+        pub->publish(scan_msg);
+      } else {
+        NODELET_WARN_STREAM("RPLidar: not publishing since data count < 360 [" << node_count << "]");
       }
-
-      if (scan_msg->time_increment == std::numeric_limits<float>::infinity()) {
-        NODELET_WARN_STREAM("RPLidar : Time increment is infinity!");
-        NODELET_WARN_STREAM("Node Count: " << node_count);
-      }
-
-      pub->publish(scan_msg);
   }
 
   int RPlidarNodelet::init_driver(std::string& serial_port, int& serial_baudrate)
   {
-    NODELET_INFO_STREAM("RPlidar : Initialising driver.");
-
     // check if there is an existing driver instance
     if (drv)
     {
       if (drv->isConnected())
       {
-        NODELET_INFO_STREAM("RPlidar : Disconnecting old driver instance.");
+        NODELET_INFO_STREAM("RPlidar: disconnecting old driver instance.");
         drv->disconnect();
       }
-      NODELET_INFO_STREAM("RPlidar : Disposing old driver instance.");
+      NODELET_INFO_STREAM("RPlidar: disposing old driver instance.");
       RPlidarDriver::DisposeDriver(&drv);
     }
 
@@ -305,16 +302,16 @@ namespace rplidar_ros {
 
     if (!drv)
     {
-      NODELET_ERROR_STREAM("RPlidar : Failed to create driver!");
+      NODELET_ERROR_STREAM("RPlidar: failed to create driver!");
       return -2;
     }
 
     // make connection...
-    NODELET_INFO_STREAM("RPlidar : Connecting on " << serial_port << " [" << serial_baudrate << "]");
+    NODELET_INFO_STREAM("RPlidar: connecting on " << serial_port << " [" << serial_baudrate << "]");
     u_result result = drv->connect(serial_port.c_str(), (_u32)serial_baudrate);
     if (IS_FAIL(result))
     {
-      NODELET_ERROR_STREAM("RPlidar : Cannot bind to the specified serial port [" << serial_port << "]");
+      NODELET_ERROR_STREAM("RPlidar: cannot bind to the specified serial port [" << serial_port << "]");
       RPlidarDriver::DisposeDriver(&drv);
       return -1;
     }
@@ -330,7 +327,7 @@ namespace rplidar_ros {
     u_result start_scan_result = drv->startScan();
     if ( start_scan_result != RESULT_OK )
     {
-      NODELET_ERROR_STREAM("RPLidar : Failed to put the device into scanning mode [" << start_scan_result << "]");
+      NODELET_ERROR_STREAM("RPLidar: failed to put the device into scanning mode [" << start_scan_result << "]");
       RPlidarDriver::DisposeDriver(&drv);
       return -1;
     }
@@ -347,20 +344,19 @@ namespace rplidar_ros {
       if (IS_OK(op_result)) {
         switch (healthinfo.status) {
           case(RPLIDAR_STATUS_OK) : {
-            NODELET_INFO_STREAM("RPLidar : health ok");
             return true;
           }
           case(RPLIDAR_STATUS_ERROR) : {
-            NODELET_ERROR_STREAM("RPLidar : health check failed, please reboot the device");
+            NODELET_ERROR_STREAM("RPLidar: health check failed, please reboot the device");
             return false;
           }
           default: {
-            NODELET_WARN_STREAM("RPLidar : health not ok, but unhandled status returned [" << healthinfo.status << "]");
+            NODELET_WARN_STREAM("RPLidar: health not ok, but unhandled status returned [" << healthinfo.status << "]");
             return true;
           }
         }
       } else {
-        NODELET_ERROR("RPLidar : cannot retrieve the rplidar health status %x", op_result);
+        NODELET_ERROR("RPLidar: cannot retrieve the rplidar health status %x", op_result);
         return false;
       }
   }
@@ -371,7 +367,7 @@ namespace rplidar_ros {
     if(!drv)
           return false;
 
-    NODELET_DEBUG("Stop motor");
+    NODELET_DEBUG("RPLidar : stopping the motor");
     drv->stop();
     drv->stopMotor();
     return true;
@@ -382,7 +378,7 @@ namespace rplidar_ros {
   {
     if(!drv)
           return false;
-    NODELET_DEBUG("Start motor");
+    NODELET_DEBUG("RPLidar : starting the motor");
     drv->startMotor();
     drv->startScan();;
     return true;
@@ -395,7 +391,7 @@ namespace rplidar_ros {
     {
       return false;
     }
-    NODELET_INFO("Resetting the device.");
+    NODELET_INFO("RPLidar: resetting the device.");
     u_result op_result;
     op_result = drv->reset();
     if (op_result == RESULT_OK)
@@ -404,7 +400,7 @@ namespace rplidar_ros {
     }
     else
     {
-      NODELET_ERROR("Failed to reset the device! (%i)", op_result);
+      NODELET_ERROR("RPLidar: failed to reset the device! (%i)", op_result);
       res.success = false;
     }
     return true;
@@ -417,27 +413,25 @@ namespace rplidar_ros {
     {
       return false;
     }
-    NODELET_INFO("Resetting scanning.");
+    NODELET_DEBUG("RPLidar: stopping and restarting scanning.");
     u_result op_result;
     op_result = drv->stop();
     if (op_result == RESULT_OK)
     {
-      NODELET_INFO("Stopped scanning.");
       op_result = drv->startScan();
       if (op_result == RESULT_OK)
       {
-        NODELET_INFO("Restarted scanning.");
         res.success = true;
       }
       else
       {
-        NODELET_ERROR("Failed to restart scanning. (%i)", op_result);
+        NODELET_ERROR("RPLidar: failed to restart scanning. (%i)", op_result);
         res.success = false;
       }
     }
     else
     {
-      NODELET_ERROR("Failed to stop scanning. (%i)", op_result);
+      NODELET_ERROR("RPLidar: failed to stop scanning. (%i)", op_result);
       res.success = false;
     }
     return true;
