@@ -107,26 +107,24 @@ namespace rplidar_ros {
           }
           else
           {
-            NODELET_INFO("Driver is still healthy. Let's just reset the scanning.");
+            NODELET_WARN("RPLidar: driver is ok, but health check failed -> reset and restart scanning");
             u_result op_result;
             op_result = drv->stop();
             if (op_result == RESULT_OK)
             {
-              NODELET_INFO("Stopped scanning.");
               op_result = drv->startScan();
               if (op_result == RESULT_OK)
               {
-                NODELET_INFO("Restarted scanning.");
                 initialised = true;
               }
               else
               {
-                NODELET_ERROR("Failed to restart scanning. (%i)", op_result);
+                NODELET_ERROR("RPLidar: failed to restart scanning. (%i)", op_result);
               }
             }
             else
             {
-              NODELET_ERROR("Failed to stop scanning. (%i)", op_result);
+              NODELET_ERROR("RPLidar: failed to stop scanning. (%i)", op_result);
             }
           }
         }
@@ -198,7 +196,7 @@ namespace rplidar_ros {
             float angle_min = DEG2RAD(0.0f);
             float angle_max = DEG2RAD(359.0f);
 
-            NODELET_WARN_STREAM("RPLidar : Publishing Invalid data; might burst! watch out..");
+            NODELET_WARN_STREAM("RPLidar: publishing invalid data; might burst! watch out..");
 
             this->publish_scan(&scan_pub, nodes, count,
                          start_scan_time, scan_duration, inverted,
@@ -209,7 +207,7 @@ namespace rplidar_ros {
     }
     else if ( op_result == RESULT_OPERATION_TIMEOUT)
     {
-      NODELET_WARN_STREAM("RPLidar : She's dead Jim! [timed out waiting for a full 360 scan]");
+      NODELET_WARN_STREAM("RPLidar: she's dead Jim! [timed out waiting for a full 360 scan]");
       initialised = false;
     }
   }
@@ -282,7 +280,7 @@ namespace rplidar_ros {
         NODELET_WARN_STREAM("RPLidar : Time increment is infinity!");
         NODELET_WARN_STREAM("Node Count: " << node_count);
       }
-      
+
       pub->publish(scan_msg);
   }
 
