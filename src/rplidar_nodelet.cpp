@@ -42,25 +42,23 @@ namespace rplidar_ros {
     res = RPlidarNodelet::init_driver(serial_port, serial_baudrate);
     if (res < 0)
     {
-      NODELET_ERROR_STREAM("Failed to initialise driver. Exiting. (Halt!)");
-      //return res;
-      //should exit nodelet here and not go any further
-    } // should implement unloading method on misconfiguration
+      NODELET_ERROR_STREAM("Failed to initialise driver. Will retry in the spin...");
+      // if not initialised here, will retry in devicePoll()
+    }
     else
     {
       initialised = true;
-
-
-      stop_motor_service = nh_private.advertiseService("stop_motor", &RPlidarNodelet::stop_motor, this);
-      start_motor_service = nh_private.advertiseService("start_motor", &RPlidarNodelet::start_motor, this);
-      reset_device_service = nh_private.advertiseService("reset_device", &RPlidarNodelet::reset_device, this);
-      reset_scan_service = nh_private.advertiseService("reset_scan", &RPlidarNodelet::reset_scan, this);
-
-      scan_pub = nh.advertise<sensor_msgs::LaserScan>("scan", 1000);
-
-      device_thread_ = boost::shared_ptr< boost::thread >
-        (new boost::thread(boost::bind(&RPlidarNodelet::devicePoll, this)));
     }
+
+    stop_motor_service = nh_private.advertiseService("stop_motor", &RPlidarNodelet::stop_motor, this);
+    start_motor_service = nh_private.advertiseService("start_motor", &RPlidarNodelet::start_motor, this);
+    reset_device_service = nh_private.advertiseService("reset_device", &RPlidarNodelet::reset_device, this);
+    reset_scan_service = nh_private.advertiseService("reset_scan", &RPlidarNodelet::reset_scan, this);
+
+    scan_pub = nh.advertise<sensor_msgs::LaserScan>("scan", 1000);
+
+    device_thread_ = boost::shared_ptr< boost::thread >
+      (new boost::thread(boost::bind(&RPlidarNodelet::devicePoll, this)));
   }
 
   void RPlidarNodelet::devicePoll()
