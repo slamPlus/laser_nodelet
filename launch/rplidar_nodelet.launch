@@ -5,6 +5,7 @@
   <arg name="inverted"          default="false"/>
   <arg name="angle_compensate"  default="true"/>
   <arg name="topic_name"        default="scan"/>
+  <arg name="diag_time_window"  default="30"/>
 
   <node pkg="nodelet" type="nodelet" name="rplidar_nodelet_manager" args="manager" />
 
@@ -14,6 +15,7 @@
     <param name="frame_id"            type="string" value="$(arg frame_id)"/>
     <param name="inverted"            type="bool"   value="$(arg inverted)"/>
     <param name="angle_compensate"    type="bool"   value="$(arg angle_compensate)"/>
+    <param name="diag_time_window"    type="int"    value="$(arg diag_time_window)"/>
     <remap from="scan" to="$(arg topic_name)"/>
   </node>
 

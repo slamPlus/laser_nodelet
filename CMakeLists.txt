@@ -16,6 +16,8 @@ find_package(catkin REQUIRED COMPONENTS
   nodelet
   pluginlib
   message_filters
+  diagnostic_msgs
+  diagnostic_updater
 )
 
 
