@@ -62,7 +62,7 @@ namespace rplidar_ros {
     bool inverted;
     std::string frame_id;
     std::string serial_port;
-    int diagnostics_time_window;
+    int diag_time_window;
     int serial_baudrate;
     int res;
     int result_timeout_counter;

@@ -45,7 +45,7 @@ namespace rplidar_ros {
     nh_private.param<std::string>("frame_id", frame_id, "laser_frame");
     nh_private.param<bool>("inverted", inverted, "false");
     nh_private.param<bool>("angle_compensate", angle_compensate, "true");
-    nh_private.param<int>("diagnostics_time_window", diagnostics_time_window, 30);
+    nh_private.param<int>("diag_time_window", diag_time_window, 30);
 
     res = RPlidarNodelet::init_driver(serial_port, serial_baudrate);
     if (res < 0)
@@ -108,11 +108,11 @@ namespace rplidar_ros {
     // output the counter and frequency of error with respect to elapsed time
     stat.addf("elapsed_time", "%.3fs", elapsed_time.toSec());
     stat.add("bad_health_counter", bad_health_counter);
-    stat.addf("bad_health_rate", "%d errors occured in last %d minutes", bad_health_deque.size(), diagnostics_time_window);
+    stat.addf("bad_health_rate", "%d errors occured in last %d minutes", bad_health_deque.size(), diag_time_window);
     stat.add("result_timeout_counter", result_timeout_counter);
-    stat.addf("result_timeout_rate", "%d errors occured in last %d minutes", result_timeout_deque.size(), diagnostics_time_window);
+    stat.addf("result_timeout_rate", "%d errors occured in last %d minutes", result_timeout_deque.size(), diag_time_window);
     stat.add("result_fail_counter", result_fail_counter);
-    stat.addf("result_fail_rate", "%d errors occured in last %d minutes", result_fail_deque.size(), diagnostics_time_window);
+    stat.addf("result_fail_rate", "%d errors occured in last %d minutes", result_fail_deque.size(), diag_time_window);
 
   }
 
@@ -127,7 +127,7 @@ namespace rplidar_ros {
         for ( std::deque<ros::Time>::iterator it = rate_error_deques[i].begin(); it != rate_error_deques[i].end(); it++ )
         // loop through each time stamp of error and erase out of window errors
         {
-          if ( (ros::Time::now() - *it) > ros::Duration( diagnostics_time_window * 60) ) // for seconds
+          if ( (ros::Time::now() - *it) > ros::Duration( diag_time_window * 60 ) ) // for seconds
           {
             // remove element
             rate_error_deques[i].erase(it);
