@@ -65,9 +65,11 @@ namespace rplidar_ros {
     int diag_time_window;
     int serial_baudrate;
     int res;
-    int result_timeout_counter;
-    int result_fail_counter;
+
     int bad_health_counter;
+    int result_fail_counter;
+    int result_timeout_counter;
+
     std::deque<ros::Time> result_timeout_deque;
     std::deque<ros::Time> result_fail_deque;
     std::deque<ros::Time> bad_health_deque;
@@ -81,6 +83,7 @@ namespace rplidar_ros {
     ros::ServiceServer reset_scan_service;
     ros::Time starting_time;
     ros::Duration elapsed_time;
+    ros::Duration diag_time_window_seconds;
 
     boost::shared_ptr<boost::thread> device_thread_;
     boost::shared_ptr<boost::thread> diagnostics_rate_thread_;
