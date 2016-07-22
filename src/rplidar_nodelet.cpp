@@ -30,13 +30,17 @@ namespace rplidar_ros {
     initialised = false;
     res = 0;
 
-    result_timeout_counter = 0;
-    result_fail_counter = 0;
     bad_health_counter = 0;
+    result_fail_counter = 0;
+    result_timeout_counter = 0;
+
     starting_time = ros::Time::now();
-    rate_error_deques.push_back(bad_health_deque);
-    rate_error_deques.push_back(result_fail_deque);
-    rate_error_deques.push_back(result_timeout_deque);
+
+    // Always use rate_error_deques[<0, 1, 2>] to push_back elements
+    // due to weird referencing issues
+    rate_error_deques.push_back(bad_health_deque);        // 0
+    rate_error_deques.push_back(result_fail_deque);       // 1
+    rate_error_deques.push_back(result_timeout_deque);    // 2
 
     ros::NodeHandle &nh = this->getNodeHandle();
     ros::NodeHandle &nh_private = this->getPrivateNodeHandle();
@@ -45,7 +49,8 @@ namespace rplidar_ros {
     nh_private.param<std::string>("frame_id", frame_id, "laser_frame");
     nh_private.param<bool>("inverted", inverted, "false");
     nh_private.param<bool>("angle_compensate", angle_compensate, "true");
-    nh_private.param<int>("diagnostics_time_window", diagnostics_time_window, 30);
+    nh_private.param<int>("diag_time_window", diag_time_window, 30);
+    diag_time_window_seconds = ros::Duration(diag_time_window * 60); // for seconds
 
     res = RPlidarNodelet::init_driver(serial_port, serial_baudrate);
     if (res < 0)
@@ -108,11 +113,14 @@ namespace rplidar_ros {
     // output the counter and frequency of error with respect to elapsed time
     stat.addf("elapsed_time", "%.3fs", elapsed_time.toSec());
     stat.add("bad_health_counter", bad_health_counter);
-    stat.addf("bad_health_rate", "%d errors occured in last %d minutes", bad_health_deque.size(), diagnostics_time_window);
-    stat.add("result_timeout_counter", result_timeout_counter);
-    stat.addf("result_timeout_rate", "%d errors occured in last %d minutes", result_timeout_deque.size(), diagnostics_time_window);
+    //stat.addf("bad_health_rate", "%d errors occured in last %d minutes", bad_health_deque.size(), diag_time_window);
+    stat.addf("bad_health_rate", "%d errors occured in last %d minutes", rate_error_deques[0].size(), diag_time_window);
     stat.add("result_fail_counter", result_fail_counter);
-    stat.addf("result_fail_rate", "%d errors occured in last %d minutes", result_fail_deque.size(), diagnostics_time_window);
+    //stat.addf("result_fail_rate", "%d errors occured in last %d minutes", result_fail_deque.size(), diag_time_window);
+    stat.addf("result_fail_rate", "%d errors occured in last %d minutes", rate_error_deques[1].size(), diag_time_window);
+    stat.add("result_timeout_counter", result_timeout_counter);
+    //stat.addf("result_timeout_rate", "%d errors occured in last %d minutes", result_timeout_deque.size(), diag_time_window);
+    stat.addf("result_timeout_rate", "%d errors occured in last %d minutes", rate_error_deques[2].size(), diag_time_window);
 
   }
 
@@ -127,7 +135,7 @@ namespace rplidar_ros {
         for ( std::deque<ros::Time>::iterator it = rate_error_deques[i].begin(); it != rate_error_deques[i].end(); it++ )
         // loop through each time stamp of error and erase out of window errors
         {
-          if ( (ros::Time::now() - *it) > ros::Duration( diagnostics_time_window * 60) ) // for seconds
+          if ( (ros::Time::now() - *it) > diag_time_window_seconds )
           {
             // remove element
             rate_error_deques[i].erase(it);
@@ -172,7 +180,8 @@ namespace rplidar_ros {
         else
         {
           bad_health_counter++;
-          bad_health_deque.push_back(ros::Time::now());
+          // bad_health_deque.push_back(ros::Time::now());
+          rate_error_deques[0].push_back(ros::Time::now());
           if (!checkRPLIDARHealth(drv))
           {
             NODELET_INFO("Bad health. Let's better re-initialise the driver.");
@@ -277,7 +286,8 @@ namespace rplidar_ros {
            }
       } else if (op_result == RESULT_OPERATION_FAIL) {
           result_fail_counter++;
-          result_fail_deque.push_back(ros::Time::now());
+          // result_fail_deque.push_back(ros::Time::now());
+          rate_error_deques[1].push_back(ros::Time::now());
             // All the data is invalid
             // SHOULD NOT PUBLISH ANY DATA FROM here
             // BECAUSE IT CAN CRASH THE PROGRAMS USING THE DATA
@@ -299,10 +309,13 @@ namespace rplidar_ros {
     else if (op_result == RESULT_OPERATION_TIMEOUT)
     {
       result_timeout_counter++;
-      result_timeout_deque.push_back(ros::Time::now());
+      // result_timeout_deque.push_back(ros::Time::now());
+      rate_error_deques[2].push_back(ros::Time::now());
+
       // to catch this error before we set initialized to false
       // will quickly fade away but good to catch on timeline
       updater.force_update();
+
       NODELET_WARN_STREAM("RPLidar: she's dead Jim! [timed out waiting for a full 360 scan]");
       initialised = false;
     }
