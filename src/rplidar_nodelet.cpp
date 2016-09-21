@@ -71,7 +71,7 @@ namespace rplidar_ros {
     scan_pub = nh.advertise<sensor_msgs::LaserScan>("scan", 1000);
 
     updater.setHardwareID("none");
-    updater.add("RPLidar Device Status", this, &RPlidarNodelet::device_diagnostics);
+    updater.add("RPLidar", this, &RPlidarNodelet::device_diagnostics);
 
     device_thread_ = boost::shared_ptr< boost::thread >
       (new boost::thread(boost::bind(&RPlidarNodelet::devicePoll, this)));
@@ -114,13 +114,13 @@ namespace rplidar_ros {
     stat.addf("elapsed_time", "%.3fs", elapsed_time.toSec());
     stat.add("bad_health_counter", bad_health_counter);
     //stat.addf("bad_health_rate", "%d errors occured in last %d minutes", bad_health_deque.size(), diag_time_window);
-    stat.addf("bad_health_rate", "%d errors occured in last %d minutes", rate_error_deques[0].size(), diag_time_window);
+    stat.addf("bad_health_rate", "%d errors in last %d minutes", rate_error_deques[0].size(), diag_time_window);
     stat.add("result_fail_counter", result_fail_counter);
     //stat.addf("result_fail_rate", "%d errors occured in last %d minutes", result_fail_deque.size(), diag_time_window);
-    stat.addf("result_fail_rate", "%d errors occured in last %d minutes", rate_error_deques[1].size(), diag_time_window);
+    stat.addf("result_fail_rate", "%d errors in last %d minutes", rate_error_deques[1].size(), diag_time_window);
     stat.add("result_timeout_counter", result_timeout_counter);
     //stat.addf("result_timeout_rate", "%d errors occured in last %d minutes", result_timeout_deque.size(), diag_time_window);
-    stat.addf("result_timeout_rate", "%d errors occured in last %d minutes", rate_error_deques[2].size(), diag_time_window);
+    stat.addf("result_timeout_rate", "%d errors in last %d minutes", rate_error_deques[2].size(), diag_time_window);
 
   }
 
